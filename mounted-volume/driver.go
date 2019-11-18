@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 	"sync"
 	"syscall"
 
@@ -116,6 +117,12 @@ func (p *Driver) Get(req *volume.GetRequest) (*volume.GetResponse, error) {
 	if getVolErr != nil {
 		return &volume.GetResponse{}, getVolErr
 	}
+
+	passwordRegex, _ := regexp.Compile("password=[^,$]+")
+	for index, arg := range volumeInfo.Status["args"].([]string) {
+		volumeInfo.Status["args"].([]string)[index] = passwordRegex.ReplaceAllString(arg, "password=*****")
+	}
+
 	return &volume.GetResponse{
 		Volume: &volume.Volume{
 			Name:       req.Name,
@@ -232,7 +239,7 @@ func (p *Driver) Mount(req *volume.MountRequest) (*volume.MountResponse, error) 
 		args = append(args, mountPoint)
 		args = append(args, volumeInfo.Args...)
 	}
-	log.Println(args)
+
 	cmd := exec.Command(p.mountExecutable, args...)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		fmt.Printf("Command output: %s\n", out)

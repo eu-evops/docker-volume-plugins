@@ -26,6 +26,7 @@ func gobDecode(data []byte) (*mountedVolumeInfo, error) {
 	buf := bytes.NewBuffer(data)
 	dec := gob.NewDecoder(buf)
 	err := dec.Decode(&p)
+
 	if err != nil {
 		return nil, err
 	}
