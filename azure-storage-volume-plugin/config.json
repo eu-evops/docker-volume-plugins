@@ -1,0 +1,67 @@
+{
+    "description": "Azure Storage plugin for Docker",
+    "documentation": "https://github.com/evops-eu/docker-volume-plugins/",
+    "entrypoint": [
+        "/azure-storage-volume-plugin"
+    ],
+    "env": [
+        {
+            "name": "DEFAULT_CIFSOPTS",
+            "settable": [
+                "value"
+            ],
+            "value": ""
+        },
+        {
+            "name": "AZURE_KEYVAULT",
+            "settable": [
+                "value"
+            ],
+            "value": ""
+        },
+        {
+            "name": "AZURE_KEY_NAME",
+            "settable": [
+                "value"
+            ],
+            "value": ""
+        },
+        {
+            "name": "AZURE_METADATA_URL",
+            "settable": [
+                "value"
+            ],
+            "value": "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fvault.azure.net"
+        },
+        {
+            "name": "AZURE_KEYVAULT_URL",
+            "settable": [
+                "value"
+            ],
+            "value": "https://%s.vault.azure.net/keys/%s?api-version=2016-10-01"
+        },
+        {
+            "name": "DEBUG",
+            "settable": [
+                "value"
+            ],
+            "value": "false"
+        }
+    ],
+    "network": {
+        "type": "host"
+    },
+    "propagatedMount": "/var/lib/docker-volumes",
+    "interface": {
+        "types": [
+            "docker.volumedriver/1.0"
+        ],
+        "socket": "azure-storage.sock"
+    },
+    "linux": {
+        "capabilities": [
+            "CAP_SYS_ADMIN",
+            "CAP_DAC_READ_SEARCH"
+        ]
+    }
+}

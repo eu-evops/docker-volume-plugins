@@ -1,0 +1,4 @@
+FROM alpine:3.10.3 as base
+
+FROM base AS build
+RUN apk add go git musl-dev ca-certificates
