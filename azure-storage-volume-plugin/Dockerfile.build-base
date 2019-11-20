@@ -1,4 +1,5 @@
 FROM alpine:3.10.3 as base
 
 FROM base AS build
-RUN apk add go git musl-dev ca-certificates
+RUN apk add go git musl-dev ca-certificates && \
+    go get github.com/boltdb/bolt github.com/docker/go-plugins-helpers/volume gotest.tools/assert

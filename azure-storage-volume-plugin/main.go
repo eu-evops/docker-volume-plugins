@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -69,7 +71,7 @@ type AzureEncryptDecryptResponse struct {
 	Value string `json:"value"`
 }
 
-func (p *azureStorageDriver) decryptPasswordUsingAzureKeyVault(encryptedPassword string) (string, error) {
+func (p *azureStorageDriver) decryptPasswordUsingAzureKeyVault(encryptedPassword string, volumeName string) (string, error) {
 	log.Printf("Reading key from Azure KV: %s\n", p.azureKeyVault)
 	log.Printf("Decrypting from Azure using key: %s\n", p.azureKeyName)
 
@@ -130,7 +132,6 @@ func (p *azureStorageDriver) decryptPasswordUsingAzureKeyVault(encryptedPassword
 
 	decryptJSONBody, _ := json.Marshal(decryptRequestBody)
 
-	log.Println("Decrypting password with url", keyURL)
 	decryptRequest, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/decrypt?api-version=2016-10-01", keyURL), bytes.NewBuffer(decryptJSONBody))
 	decryptRequest.Header.Add("Content-Type", "application/json")
 	decryptRequest.Header.Add("Authorization", fmt.Sprintf("Bearer %s", metadata.AccessToken))
@@ -150,18 +151,25 @@ func (p *azureStorageDriver) decryptPasswordUsingAzureKeyVault(encryptedPassword
 
 	base64Password := decryptionResult.Value
 	numberOfMissingCharacters := len(base64Password) % 4
-	
+
 	for i := 0; i < numberOfMissingCharacters; i++ {
 		base64Password += "="
 	}
 
-	decodedString, err := base64.StdEncoding.DecodeString(base64Password)
+	decodedStringBytes, err := base64.StdEncoding.DecodeString(base64Password)
 
 	if err != nil {
 		return "", err
 	}
 
-	return string(decodedString), nil
+	decodedString := string(decodedStringBytes)
+
+	volumeNameRegex, _ := regexp.Compile(fmt.Sprintf("^%s:", volumeName))
+	if !volumeNameRegex.MatchString(decodedString) {
+		return "", errors.New("Decoded secret should be in a format of volumeName:accessKey")
+	}
+
+	return volumeNameRegex.ReplaceAllString(decodedString, ""), nil
 }
 
 func (p *azureStorageDriver) MountOptions(req *volume.CreateRequest) []string {
@@ -178,9 +186,9 @@ func (p *azureStorageDriver) MountOptions(req *volume.CreateRequest) []string {
 	}
 
 	if encryptedPassword != "" {
-		password, err := p.decryptPasswordUsingAzureKeyVault(encryptedPassword)
+		password, err := p.decryptPasswordUsingAzureKeyVault(encryptedPassword, req.Name)
 		if err != nil {
-			log.Panicln("Failed to decrypt password", err)
+			log.Panicln("Failed to decrypt password")
 		}
 		cifsoptsArray = append(cifsoptsArray, fmt.Sprintf("password=%s", password))
 	}
@@ -209,7 +217,7 @@ func buildDriver() *azureStorageDriver {
 	}
 
 	d := &azureStorageDriver{
-		Driver:           *mountedvolume.NewDriver("mount", true, "azure-storage", "local"),
+		Driver:           *mountedvolume.NewDriver("mount", true, "azure-storage", "global"),
 		credentialPath:   credentialPath,
 		defaultCifsopts:  defaultCifsopts,
 		azureKeyVault:    azureKeyVault,

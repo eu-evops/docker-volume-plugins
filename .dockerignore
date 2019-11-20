@@ -1,4 +1,7 @@
 .vscode/
 ./build.sh
 ./config.json
-build/
+**/build/
+**/Dockerfile
+**/*.db
+**/build.sh
